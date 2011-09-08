@@ -143,23 +143,22 @@ int main(int argc, char **argv) {
 
 int readFile(FILE *f) { /* {{{ */
 	size_t bRead;
-	uint32_t i, j, pCount = 0;
-	uint32_t xHead, yHead, rHead[8];
+	uint32_t i, j, pCount = 0, head;
 	/*char yHead[6], rHead[15];*/
 	char glob[16];
 
 	/* Verify xHead is present in header */
-	bRead = fread(&xHead, 1, 4, f);
+	bRead = fread(&head, 1, 4, f);
 	if(bRead != 4) {
 		fprintf(stderr, "File is not long enough to have x-header!\n");
 		exit(1);
 	}
 	/*  78  20  3d  20
-	 * 'x' ' ' '=' ' ' 
+	 * 'x' ' ' '=' ' '
 	 * it's backwards because... endianness? TODO */
-	if(xHead != 0x203d2078) {
+	if(head != 0x203d2078) {
 		fprintf(stderr, "File header is incorrect (wrong xHead)!\n");
-		fprintf(stderr, "Recieved: %x\n", xHead);
+		fprintf(stderr, "Recieved: %x\n", head);
 		exit(1);
 	}
 
@@ -206,17 +205,17 @@ int readFile(FILE *f) { /* {{{ */
 		fprintf(stderr, "There needs to be a space, not a '%c'\n", glob[0]);
 		exit(1);
 	}
-	bRead = fread(&yHead, 1, 4, f);
+	bRead = fread(&head, 1, 4, f);
 	if(bRead != 4) {
 		fprintf(stderr, "File is not long enough to have y-header!\n");
 		exit(1);
 	}
 	/*  79  20  3d  20
-	 * 'y' ' ' '=' ' ' 
+	 * 'y' ' ' '=' ' '
 	 * it's backwards because... endianness? TODO */
-	if(yHead != 0x203d2079) {
+	if(head != 0x203d2079) {
 		fprintf(stderr, "File header is incorrect (wrong yHead)!\n");
-		fprintf(stderr, "Recieved: %x\n", yHead);
+		fprintf(stderr, "Recieved: %x\n", head);
 		exit(1);
 	}
 
@@ -256,19 +255,81 @@ int readFile(FILE *f) { /* {{{ */
 	}
 	printf("Board height: %d\n", boardHeight);
 
+	/* Verify rHead is present */
+	glob[0] = fgetc(f);
+	if(glob[0] != ' ') {
+		fprintf(stderr, "Malformed header after height!\n");
+		fprintf(stderr, "There needs to be a space, not a '%c'\n", glob[0]);
+		exit(1);
+	}
+	glob[0] = fgetc(f);
+	if(glob[0] != 'r') {
+		fprintf(stderr, "Malformed header after height!\n");
+		fprintf(stderr, "There needs to be a space, not a '%c'\n", glob[0]);
+		exit(1);
+	}
+
+	bRead = fread(&head, 1, 4, f);
+	if(bRead != 4) {
+		fprintf(stderr, "File is not long enough to have 1-r-header!\n");
+		exit(1);
+	}
+	/*  75  6c  65  20
+	 * 'u' 'l' 'e' ' '
+	 * it's backwards because... endianness? TODO */
+	if(head != 0x20656c75) {
+		fprintf(stderr, "File header is incorrect (wrong 1-rHead)!\n");
+		fprintf(stderr, "Recieved: %x\n", head);
+		exit(1);
+	}
+
+	bRead = fread(&head, 1, 4, f);
+	if(bRead != 4) {
+		fprintf(stderr, "File is not long enough to have 2-r-header!\n");
+		exit(1);
+	}
+	/*  3d  20  42  33
+	 * '=' ' ' 'B' '3'
+	 * it's backwards because... endianness? TODO */
+	if(head != 0x3342203d) {
+		fprintf(stderr, "File header is incorrect (wrong 2-rHead)!\n");
+		fprintf(stderr, "Recieved: %x\n", head);
+		exit(1);
+	}
+
+	bRead = fread(&head, 1, 4, f);
+	if(bRead != 4) {
+		fprintf(stderr, "File is not long enough to have 3-r-header!\n");
+		exit(1);
+	}
+	/*  2f  53  32  33
+	 * '/' 'S' '2' '3'
+	 * it's backwards because... endianness? TODO */
+	if(head != 0x3332532f) {
+		fprintf(stderr, "File header is incorrect (wrong 3-rHead)!\n");
+		fprintf(stderr, "Recieved: %x\n", head);
+		exit(1);
+	}
+	printf("rHead is correct\n");
+
+	glob[0] = fgetc(f);
+	if(glob[0] != '\n') {
+		fprintf(stderr, "Malformed header after rHead!\n");
+		fprintf(stderr, "There needs to be a newline, not a '%c'\n", glob[0]);
+		exit(1);
+	}
+
 	boardArea = boardWidth * boardHeight;
 	memoryRequirement = boardArea >> 3;
-
+	printf("Attempting to allocate %ld bytes for board\n", memoryRequirement);
 
 	board = malloc(memoryRequirement);
 	if(!board) {
 		fprintf(stderr, "Could not allocate enough memory\n");
 		exit(1);
 	}
-	for(i = 0; i < boardArea; ++i)
-		setAlive(board, i);
 
-	for(i = 2; i < boardArea; ++i) {
+	for(i = 0; i < boardArea; ++i) {
 		if(!isAlive(board, i))
 			continue;
 		pCount++;
