@@ -1,0 +1,19 @@
+clife is an implementation of Conway's game of life in C.
+[the 'c' stands for Conway or 'C', take you pick ;)]
+
+Compiling:
+	make
+
+Running:
+	./clife <.rle file>
+		or
+	$(something that outputs a .rle file) | ./clife
+
+	The .rle file is the same as the one Golly uses, except it does not support
+	comments or other rulesets at this time.
+
+Controls:
+	Once everything dies, the program exits.
+
+	Enter, Escape: Exit prematurely (and save a screenshot in out.bmp)
+
