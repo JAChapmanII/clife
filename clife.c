@@ -3,46 +3,10 @@
 #include <stdint.h>
 #include <SDL/SDL.h>
 
-#define MAX_BOARD_WIDTH  (1 << 16)
-#define MAX_BOARD_HEIGHT (1 << 16)
+#include "board.h"
 
-uint32_t boardWidth, boardHeight;
-uint64_t boardArea, memoryRequirement;
-char torodialWorld;
+Board *board, *new = NULL, *tmp;
 
-int isDigit(char c) {
-	return (
-		(c == '1') || (c == '2') || (c == '3') ||
-		(c == '4') || (c == '5') || (c == '6') ||
-		(c == '7') || (c == '8') || (c == '9') ||
-		(c == '0'));
-}
-
-void setupConstants(uint32_t width, uint32_t heigth, char torodial) {
-	boardWidth  = width;
-	boardHeight = heigth;
-	boardArea  = (boardWidth*boardHeight);
-	memoryRequirement = ((boardArea + 7) >> 3);
-	torodialWorld = torodial;
-}
-
-/* We still use single dimension arrays so that the bit packing is easier to
- * do, and we already had code to act like it is a 2D array */
-char *board = NULL, *new = NULL, *tmp;
-
-/* Functions to check/set/clear "alive"-ness {{{ */
-int isAlive(char *p, int x) {
-	return (p[x >> 3] & (0x1 << (x % 8))) >> (x % 8);
-}
-void setAlive(char *p, int x) {
-	p[x >> 3] |= (0x1 << (x % 8));
-}
-void setNotAlive(char *p, int x) {
-	if(isAlive(p, x))
-		p[x >> 3] -= (0x1 << (x % 8));
-} /* }}} */
-
-int readFile(FILE *f);
 int stepLife();
 
 SDL_Surface *screen;
@@ -51,10 +15,8 @@ void initSDL();
 void drawGrid();
 
 int main(int argc, char **argv) {
-	int i, tAN, aCount, width, height, torodial;
+	int i, tAN;
 	FILE *in;
-	width = height = 768;
-	torodial = 1;
 
 	if(argc < 2) {
 		in = stdin;
@@ -67,25 +29,14 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	aCount = readFile(in);
-	printf("Initial population is %d out of %d area\n", aCount, width * height);
+	board = board_readFile(in);
+	if(!board)
+		return 1;
 
-	/* Parse arguments as width, height, and not torodial {{{ */
-	if(argc > 1) {
-		width = height = atoi(argv[1]);
-		if(width <= 0)
-			width = height = 768;
-		if(argc > 2) {
-			height = atoi(argv[2]);
-			if(height <= 0)
-				height = 768;
-			if(argc > 3) {
-				torodial = 0;
-			}
-		}
-	} /* }}} */
+	printf("Initial population is %ld out of %ld area\n", board->aliveCount, board->boardArea);
 
-	setupConstants(width, height, torodial);
+	if(argc > 1)
+		board->torodial = 0;
 
 	initSDL();
 	if(screen->format->BytesPerPixel != 4) {
@@ -141,332 +92,116 @@ int main(int argc, char **argv) {
 	return 0;
 }
 
-int readFile(FILE *f) { /* {{{ */
-	size_t bRead;
-	uint32_t i, j, pCount = 0, head;
-	/*char yHead[6], rHead[15];*/
-	char glob[16];
-
-	/* Verify xHead is present in header */
-	bRead = fread(&head, 1, 4, f);
-	if(bRead != 4) {
-		fprintf(stderr, "File is not long enough to have x-header!\n");
-		exit(1);
-	}
-	/*  78  20  3d  20
-	 * 'x' ' ' '=' ' '
-	 * it's backwards because... endianness? TODO */
-	if(head != 0x203d2078) {
-		fprintf(stderr, "File header is incorrect (wrong xHead)!\n");
-		fprintf(stderr, "Recieved: %x\n", head);
-		exit(1);
-	}
-
-	/* Read width */
-	for(i = 0; i < 16; ++i) {
-		glob[i] = fgetc(f);
-		if(feof(f)) {
-			fprintf(stderr, "Ran out of file while looking for width!\n");
-			exit(1);
-		}
-		if(!isDigit(glob[i])) {
-			break;
-		}
-	}
-	if(!i) {
-		fprintf(stderr, "Board width is not a number!\n");
-		exit(1);
-	}
-	if(i == 16) {
-		fprintf(stderr, "Board width seems to be too many digits long!\n");
-		exit(1);
-	}
-	if(glob[i] != ',') {
-		fprintf(stderr, "Board width is not ended properly!\n");
-		fprintf(stderr, "Width ended with :'%c'\n", glob[i]);
-		exit(1);
-	}
-
-	boardWidth = atoi(glob);
-	if(boardWidth <= 0) {
-		fprintf(stderr, "Board width doesn't parse or is 0!\n");
-		exit(1);
-	}
-	if(boardWidth >= MAX_BOARD_WIDTH) {
-		fprintf(stderr, "Board width is too large!\n");
-		exit(1);
-	}
-	printf("Board width: %d\n", boardWidth);
-
-	/* Verify yHead is present in header */
-	glob[0] = fgetc(f);
-	if(glob[0] != ' ') {
-		fprintf(stderr, "Malformed header after width!\n");
-		fprintf(stderr, "There needs to be a space, not a '%c'\n", glob[0]);
-		exit(1);
-	}
-	bRead = fread(&head, 1, 4, f);
-	if(bRead != 4) {
-		fprintf(stderr, "File is not long enough to have y-header!\n");
-		exit(1);
-	}
-	/*  79  20  3d  20
-	 * 'y' ' ' '=' ' '
-	 * it's backwards because... endianness? TODO */
-	if(head != 0x203d2079) {
-		fprintf(stderr, "File header is incorrect (wrong yHead)!\n");
-		fprintf(stderr, "Recieved: %x\n", head);
-		exit(1);
-	}
-
-	/* Read height */
-	for(i = 0; i < 16; ++i) {
-		glob[i] = fgetc(f);
-		if(feof(f)) {
-			fprintf(stderr, "Ran out of file while looking for width!\n");
-			exit(1);
-		}
-		if(!isDigit(glob[i])) {
-			break;
-		}
-	}
-	if(!i) {
-		fprintf(stderr, "Board height is not a number!\n");
-		exit(1);
-	}
-	if(i == 16) {
-		fprintf(stderr, "Board height seems to be too many digits long!\n");
-		exit(1);
-	}
-	if(glob[i] != ',') {
-		fprintf(stderr, "Board height is not ended properly!\n");
-		fprintf(stderr, "Height ended with :'%c'\n", glob[i]);
-		exit(1);
-	}
-
-	boardHeight = atoi(glob);
-	if(boardWidth <= 0) {
-		fprintf(stderr, "Board height doesn't parse or is 0!\n");
-		exit(1);
-	}
-	if(boardHeight >= MAX_BOARD_HEIGHT) {
-		fprintf(stderr, "Board height is too large!\n");
-		exit(1);
-	}
-	printf("Board height: %d\n", boardHeight);
-
-	/* Verify rHead is present */
-	glob[0] = fgetc(f);
-	if(glob[0] != ' ') {
-		fprintf(stderr, "Malformed header after height!\n");
-		fprintf(stderr, "There needs to be a space, not a '%c'\n", glob[0]);
-		exit(1);
-	}
-	glob[0] = fgetc(f);
-	if(glob[0] != 'r') {
-		fprintf(stderr, "Malformed header after height!\n");
-		fprintf(stderr, "There needs to be a space, not a '%c'\n", glob[0]);
-		exit(1);
-	}
-
-	bRead = fread(&head, 1, 4, f);
-	if(bRead != 4) {
-		fprintf(stderr, "File is not long enough to have 1-r-header!\n");
-		exit(1);
-	}
-	/*  75  6c  65  20
-	 * 'u' 'l' 'e' ' '
-	 * it's backwards because... endianness? TODO */
-	if(head != 0x20656c75) {
-		fprintf(stderr, "File header is incorrect (wrong 1-rHead)!\n");
-		fprintf(stderr, "Recieved: %x\n", head);
-		exit(1);
-	}
-
-	bRead = fread(&head, 1, 4, f);
-	if(bRead != 4) {
-		fprintf(stderr, "File is not long enough to have 2-r-header!\n");
-		exit(1);
-	}
-	/*  3d  20  42  33
-	 * '=' ' ' 'B' '3'
-	 * it's backwards because... endianness? TODO */
-	if(head != 0x3342203d) {
-		fprintf(stderr, "File header is incorrect (wrong 2-rHead)!\n");
-		fprintf(stderr, "Recieved: %x\n", head);
-		exit(1);
-	}
-
-	bRead = fread(&head, 1, 4, f);
-	if(bRead != 4) {
-		fprintf(stderr, "File is not long enough to have 3-r-header!\n");
-		exit(1);
-	}
-	/*  2f  53  32  33
-	 * '/' 'S' '2' '3'
-	 * it's backwards because... endianness? TODO */
-	if(head != 0x3332532f) {
-		fprintf(stderr, "File header is incorrect (wrong 3-rHead)!\n");
-		fprintf(stderr, "Recieved: %x\n", head);
-		exit(1);
-	}
-	printf("rHead is correct\n");
-
-	glob[0] = fgetc(f);
-	if(glob[0] != '\n') {
-		fprintf(stderr, "Malformed header after rHead!\n");
-		fprintf(stderr, "There needs to be a newline, not a '%c'\n", glob[0]);
-		exit(1);
-	}
-
-	boardArea = boardWidth * boardHeight;
-	memoryRequirement = boardArea >> 3;
-	printf("Attempting to allocate %ld bytes for board\n", memoryRequirement);
-
-	board = malloc(memoryRequirement);
-	if(!board) {
-		fprintf(stderr, "Could not allocate enough memory\n");
-		exit(1);
-	}
-
-	for(i = 0; i < boardArea; ++i) {
-		if(!isAlive(board, i))
-			continue;
-		pCount++;
-		for(j = i * 2; j < boardArea; j += i)
-			setNotAlive(board, j);
-	}
-	return pCount;
-} /* }}} */
-
-/*
-void writePrimes() {
-	uint32_t x, y, cnt;
-	char on;
-	FILE *f = fopen("primes.rle", "w");
-	if(!f) {
-		fprintf(stderr, "Could not open primes.rle for writing\n");
-		return;
-	}
-
-	fprintf(f, "x = %d, y = %d, rule = B3/S23\n", boardWidth, boardHeight);
-	for(y = 0; y < boardHeight; ++y) {
-		for(x = 0; x < boardWidth; ++x) {
-			on = isAlive(prime, y*boardWidth + x);
-			for(cnt = 0; (x < boardWidth) && (isAlive(prime, y*boardWidth + x) == on); ++x)
-				cnt++;
-			if((x != boardWidth - 1) || (isAlive(prime, y*boardWidth + boardWidth) != on))
-				--x;
-			if(cnt > 1)
-				fprintf(f, "%d%c", cnt, (on) ? 'o' : 'b');
-			else
-				fprintf(f, "%c", (on) ? 'o' : 'b');
-		}
-		fprintf(f, "$");
-	}
-	fprintf(f, "!\n");
-
-	fclose(f);
-}
-*/
 int stepLife() { /* {{{ */
-	uint32_t x, y, cx, cy, totalAliveNow = 0;
+	uint32_t x, y, cx, cy;
 	char aliveCount;
 
 	if(!new) {
-		new = malloc(memoryRequirement);
+		new = malloc(sizeof(Board));
 		if(!new) {
 			fprintf(stderr, "Could not allocate enough memory to simulate!\n");
 			exit(1);
 		}
+		new->boardWidth = board->boardWidth;
+		new->boardHeight = board->boardHeight;
+		new->boardArea = board->boardArea;
+		new->memoryRequirement = board->memoryRequirement;
+		new->aliveCount = board->aliveCount;
+		new->torodial = board->torodial;
+		new->board = malloc(new->memoryRequirement);
+		if(!new->board) {
+			fprintf(stderr, "Could not allocate enough memory for new->board!\n");
+			exit(1);
+		}
 	}
 
-	for(x = 0; x < boardWidth; ++x) {
-		for(y = 0; y < boardHeight; ++y) {
+	board->aliveCount = 0;
+	for(x = 0; x < board->boardWidth; ++x) {
+		for(y = 0; y < board->boardHeight; ++y) {
 			aliveCount = 0;
 
 			cx = x;
 			/* Up neighbor */
 			cy = y - 1;
-			if(torodialWorld && y == 0)
-				cy = boardHeight - 1;
-			if(torodialWorld || y != 0)
-				aliveCount += isAlive(board, cy*boardWidth + cx);
+			if(board->torodial && y == 0)
+				cy = board->boardHeight - 1;
+			if(board->torodial || y != 0)
+				aliveCount += board_IsOn(board, cx, cy);
 
 			/* Down neighbor */
 			cy = y + 1;
-			if(torodialWorld && cy >= boardHeight)
+			if(board->torodial && cy >= board->boardHeight)
 				cy = 0;
-			if(cy < boardHeight)
-				aliveCount += isAlive(board, cy*boardWidth + cx);
+			if(cy < board->boardHeight)
+				aliveCount += board_IsOn(board, cx, cy);
 
 			cy = y;
 			/* Left neighbor */
 			cx = x - 1;
-			if(torodialWorld && x == 0)
-				cx = boardWidth - 1;
-			if(torodialWorld || x != 0)
-				aliveCount += isAlive(board, cy*boardWidth + cx);
+			if(board->torodial && x == 0)
+				cx = board->boardWidth - 1;
+			if(board->torodial || x != 0)
+				aliveCount += board_IsOn(board, cx, cy);
 
 			/* Right neighbor */
 			cx = x + 1;
-			if(torodialWorld && cx >= boardWidth)
+			if(board->torodial && cx >= board->boardWidth)
 				cx = 0;
-			if(cx < boardWidth)
-				aliveCount += isAlive(board, cy*boardWidth + cx);
+			if(cx < board->boardWidth)
+				aliveCount += board_IsOn(board, cx, cy);
 
 			cy = y - 1;
-			if(torodialWorld && y == 0)
-				cy = boardHeight - 1;
-			if(torodialWorld || y != 0) {
+			if(board->torodial && y == 0)
+				cy = board->boardHeight - 1;
+			if(board->torodial || y != 0) {
 				/* Up left neighbor */
 				cx = x - 1;
-				if(torodialWorld && x == 0)
-					cx = boardWidth - 1;
-				if(torodialWorld || x != 0)
-					aliveCount += isAlive(board, cy*boardWidth + cx);
+				if(board->torodial && x == 0)
+					cx = board->boardWidth - 1;
+				if(board->torodial || x != 0)
+					aliveCount += board_IsOn(board, cx, cy);
 
 				/* Up right neighbor */
 				cx = x + 1;
-				if(torodialWorld && cx >= boardWidth)
+				if(board->torodial && cx >= board->boardWidth)
 					cx = 0;
-				if(cx < boardWidth)
-					aliveCount += isAlive(board, cy*boardWidth + cx);
+				if(cx < board->boardWidth)
+					aliveCount += board_IsOn(board, cx, cy);
 			}
 
 			cy = y + 1;
-			if(torodialWorld && cy >= boardHeight)
+			if(board->torodial && cy >= board->boardHeight)
 				cy = 0;
-			if(cy < boardHeight) {
+			if(cy < board->boardHeight) {
 				/* Down left neighbor */
 				cx = x - 1;
-				if(torodialWorld && x == 0)
-					cx = boardWidth - 1;
-				if(torodialWorld || x != 0)
-					aliveCount += isAlive(board, cy*boardWidth + cx);
+				if(board->torodial && x == 0)
+					cx = board->boardWidth - 1;
+				if(board->torodial || x != 0)
+					aliveCount += board_IsOn(board, cx, cy);
 
 				/* Down right neighbor */
 				cx = x + 1;
-				if(torodialWorld && cx >= boardWidth)
+				if(board->torodial && cx >= board->boardWidth)
 					cx = 0;
-				if(cx < boardWidth)
-					aliveCount += isAlive(board, cy*boardWidth + cx);
+				if(cx < board->boardWidth)
+					aliveCount += board_IsOn(board, cx, cy);
 			}
 
-			setNotAlive(new, y*boardWidth + x);
-			if(isAlive(board, y*boardWidth + x) &&
+			board_Set(new, x, y, 0);
+			if(board_IsOn(board, x, y) &&
 					((aliveCount == 2) || (aliveCount == 3)))
-				setAlive(new, y*boardWidth + x);
-			if(!isAlive(board, y*boardWidth + x) && (aliveCount == 3))
-				setAlive(new, y*boardWidth + x);
-			if(isAlive(new, y*boardWidth + x))
-				totalAliveNow++;
+				board_Set(new, x, y, 1);
+			if(!board_IsOn(board, x, y) && (aliveCount == 3))
+				board_Set(new, x, y, 1);
+			if(board_IsOn(new, x, y))
+				board->aliveCount++;
 		}
 	}
 	tmp = board;
 	board = new;
 	new = tmp;
-	return totalAliveNow;
+	return new->aliveCount;
 } /* }}} */
 
 void initSDL() { /* {{{ */
@@ -495,7 +230,7 @@ void initSDL() { /* {{{ */
 	if(videoInfo->blit_hw)
 		videoFlags |= SDL_HWACCEL;
 
-	screen = SDL_SetVideoMode(boardWidth, boardHeight, 32, videoFlags);
+	screen = SDL_SetVideoMode(board->boardWidth, board->boardHeight, 32, videoFlags);
 	if(screen == NULL) {
 		fprintf(stderr, "Unable to create plot screen: %s\n", SDL_GetError());
 		exit(1);
@@ -510,15 +245,15 @@ void drawGrid() { /* {{{ */
 			exit(1);
 		}
 	}
-	for(x = 0; x < boardWidth; ++x) {
-		for(y = 0; y < boardHeight; ++y) {
+	for(x = 0; x < board->boardWidth; ++x) {
+		for(y = 0; y < board->boardHeight; ++y) {
 			bufp = (Uint32 *)screen->pixels + y*screen->pitch/4 + x;
-			*bufp = (isAlive(board, y*boardWidth + x)) ? pOn : pOff;
+			*bufp = (board_IsOn(board, x, y)) ? pOn : pOff;
 		}
 	}
 	if(SDL_MUSTLOCK(screen)) {
 		SDL_UnlockSurface(screen);
 	}
-	SDL_UpdateRect(screen, 0, 0, boardWidth, boardHeight);
+	SDL_UpdateRect(screen, 0, 0, board->boardWidth, board->boardHeight);
 } /* }}} */
 
