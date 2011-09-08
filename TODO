@@ -1,0 +1,17 @@
+Implement other file formats
+	also implement .rle more properly
+
+Allow infinite grids using quadtrees
+	investigate having "oscilatting" "still" and "active" nodes
+		oscilatting -> as long as nothing gets within 2+.5*width of the center,
+			we don't update this unless it is on the screen (and then only when
+			there is a new frame). We store the period of the structure, and the
+			offset. Then we can just mod the generation by the period, add the
+			offset, and look up what the new state should be in a table.
+		still -> very similar to oscilatting in the regards to switching to
+			active. However, these will not need periods or offsets as no matter
+			the generation, as long as they are not active they remain the same.
+		active -> things that are not oscilatting or still
+
+Implement threading in simple algorithm
+Implement hashli
