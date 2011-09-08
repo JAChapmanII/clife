@@ -13,11 +13,11 @@ int isDigit(char c) {
 }
 
 int board_IsOn(Board *b, uint32_t x, uint32_t y) {
-	uint64_t n =y*b->boardWidth + x;
+	uint64_t n =y*b->width + x;
 	return (b->board[n >> 3] & (0x1 << (n % 8))) >> (n % 8);
 }
 int board_Set(Board *b, uint32_t x, uint32_t y, char state) {
-	uint64_t n =y*b->boardWidth + x;
+	uint64_t n =y*b->width + x;
 	if(state)
 		b->board[n >> 3] |= (0x1 << (n % 8));
 	else if(board_IsOn(b, x, y))
@@ -73,12 +73,12 @@ int parseWidthHeader(FILE *f, Board *b) { /* {{{ */
 		return 1;
 	}
 
-	b->boardWidth = atoi(glob);
-	if(b->boardWidth <= 0) {
+	b->width = atoi(glob);
+	if(b->width <= 0) {
 		fprintf(stderr, "Board width doesn't parse or is 0!\n");
 		return 1;
 	}
-	if(b->boardWidth >= MAX_BOARD_WIDTH) {
+	if(b->width >= MAX_BOARD_WIDTH) {
 		fprintf(stderr, "Board width is too large!\n");
 		return 1;
 	}
@@ -138,12 +138,12 @@ int parseHeightHeader(FILE *f, Board *b) { /* {{{ */
 		return 1;
 	}
 
-	b->boardHeight = atoi(glob);
-	if(b->boardWidth <= 0) {
+	b->height = atoi(glob);
+	if(b->width <= 0) {
 		fprintf(stderr, "Board height doesn't parse or is 0!\n");
 		return 1;
 	}
-	if(b->boardHeight >= MAX_BOARD_HEIGHT) {
+	if(b->height >= MAX_BOARD_HEIGHT) {
 		fprintf(stderr, "Board height is too large!\n");
 		return 1;
 	}
@@ -237,35 +237,38 @@ Board *board_readFile(FILE *f) { /* {{{ */
 		free(b);
 		return 0;
 	}
-	printf("Board width: %d\n", b->boardWidth);
+	printf("Board width: %d\n", b->width);
 	if(parseHeightHeader(f, b)) {
 		free(b);
 		return 0;
 	}
-	printf("Board height: %d\n", b->boardHeight);
+	printf("Board height: %d\n", b->height);
 
 	if(parseRuleHeader(f, b)) {
 		free(b);
 		return 0;
 	}
 
-	b->boardArea = b->boardWidth * b->boardHeight;
-	b->memoryRequirement = (b->boardArea + 7) >> 3;
-	printf("Attempting to allocate %ld bytes for board\n", b->memoryRequirement);
-
-	b->board = malloc(b->memoryRequirement);
+	printf("Allocating %ld bytes for board\n", board_getMemoryRequirement(b));
+	b->board = malloc(board_getMemoryRequirement(b));
 	if(!b->board) {
 		fprintf(stderr, "Could not allocate enough memory\n");
 		free(b);
 		return 0;
 	}
 
-	b->aliveCount = 0;
-	for(i = 0; i < b->boardArea; ++i) {
+	for(i = 0; i < b->height; ++i) {
 	}
 
 	return b;
 } /* }}} */
+
+uint64_t board_getArea(Board *b) {
+	return (uint64_t)b->width * b->height;
+}
+uint64_t board_getMemoryRequirement(Board *b) {
+	return (board_getArea(b) + 7) >> 3;
+}
 
 /*
 void writePrimes() {
@@ -277,13 +280,13 @@ void writePrimes() {
 		return;
 	}
 
-	fprintf(f, "x = %d, y = %d, rule = B3/S23\n", boardWidth, boardHeight);
-	for(y = 0; y < boardHeight; ++y) {
-		for(x = 0; x < boardWidth; ++x) {
-			on = isAlive(prime, y*boardWidth + x);
-			for(cnt = 0; (x < boardWidth) && (isAlive(prime, y*boardWidth + x) == on); ++x)
+	fprintf(f, "x = %d, y = %d, rule = B3/S23\n", width, height);
+	for(y = 0; y < height; ++y) {
+		for(x = 0; x < width; ++x) {
+			on = isAlive(prime, y*width + x);
+			for(cnt = 0; (x < width) && (isAlive(prime, y*width + x) == on); ++x)
 				cnt++;
-			if((x != boardWidth - 1) || (isAlive(prime, y*boardWidth + boardWidth) != on))
+			if((x != width - 1) || (isAlive(prime, y*width + width) != on))
 				--x;
 			if(cnt > 1)
 				fprintf(f, "%d%c", cnt, (on) ? 'o' : 'b');

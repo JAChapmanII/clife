@@ -5,8 +5,8 @@
 #define MAX_BOARD_HEIGHT (1 << 16)
 
 typedef struct {
-	uint32_t boardWidth, boardHeight;
-	uint64_t boardArea, memoryRequirement, aliveCount;
+	uint32_t width, height;
+	uint64_t alive;
 	char *board, torodial;
 } Board;
 
@@ -14,5 +14,8 @@ Board *board_readFile(FILE *f);
 
 int board_IsOn(Board *b, uint32_t x, uint32_t y);
 int board_Set(Board *b, uint32_t x, uint32_t y, char state);
+
+uint64_t board_getArea(Board *b);
+uint64_t board_getMemoryRequirement(Board *b);
 
 #endif /* BOARD_H */

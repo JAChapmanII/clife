@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 	if(!board)
 		return 1;
 
-	printf("Initial population is %ld out of %ld area\n", board->aliveCount, board->boardArea);
+	printf("Initial population is %ld out of %ld area\n", board->aliveCount, board->area);
 
 	if(argc > 1)
 		board->torodial = 0;
@@ -102,9 +102,9 @@ int stepLife() { /* {{{ */
 			fprintf(stderr, "Could not allocate enough memory to simulate!\n");
 			exit(1);
 		}
-		new->boardWidth = board->boardWidth;
-		new->boardHeight = board->boardHeight;
-		new->boardArea = board->boardArea;
+		new->width = board->width;
+		new->height = board->height;
+		new->area = board->area;
 		new->memoryRequirement = board->memoryRequirement;
 		new->aliveCount = board->aliveCount;
 		new->torodial = board->torodial;
@@ -116,75 +116,75 @@ int stepLife() { /* {{{ */
 	}
 
 	board->aliveCount = 0;
-	for(x = 0; x < board->boardWidth; ++x) {
-		for(y = 0; y < board->boardHeight; ++y) {
+	for(x = 0; x < board->width; ++x) {
+		for(y = 0; y < board->height; ++y) {
 			aliveCount = 0;
 
 			cx = x;
 			/* Up neighbor */
 			cy = y - 1;
 			if(board->torodial && y == 0)
-				cy = board->boardHeight - 1;
+				cy = board->height - 1;
 			if(board->torodial || y != 0)
 				aliveCount += board_IsOn(board, cx, cy);
 
 			/* Down neighbor */
 			cy = y + 1;
-			if(board->torodial && cy >= board->boardHeight)
+			if(board->torodial && cy >= board->height)
 				cy = 0;
-			if(cy < board->boardHeight)
+			if(cy < board->height)
 				aliveCount += board_IsOn(board, cx, cy);
 
 			cy = y;
 			/* Left neighbor */
 			cx = x - 1;
 			if(board->torodial && x == 0)
-				cx = board->boardWidth - 1;
+				cx = board->width - 1;
 			if(board->torodial || x != 0)
 				aliveCount += board_IsOn(board, cx, cy);
 
 			/* Right neighbor */
 			cx = x + 1;
-			if(board->torodial && cx >= board->boardWidth)
+			if(board->torodial && cx >= board->width)
 				cx = 0;
-			if(cx < board->boardWidth)
+			if(cx < board->width)
 				aliveCount += board_IsOn(board, cx, cy);
 
 			cy = y - 1;
 			if(board->torodial && y == 0)
-				cy = board->boardHeight - 1;
+				cy = board->height - 1;
 			if(board->torodial || y != 0) {
 				/* Up left neighbor */
 				cx = x - 1;
 				if(board->torodial && x == 0)
-					cx = board->boardWidth - 1;
+					cx = board->width - 1;
 				if(board->torodial || x != 0)
 					aliveCount += board_IsOn(board, cx, cy);
 
 				/* Up right neighbor */
 				cx = x + 1;
-				if(board->torodial && cx >= board->boardWidth)
+				if(board->torodial && cx >= board->width)
 					cx = 0;
-				if(cx < board->boardWidth)
+				if(cx < board->width)
 					aliveCount += board_IsOn(board, cx, cy);
 			}
 
 			cy = y + 1;
-			if(board->torodial && cy >= board->boardHeight)
+			if(board->torodial && cy >= board->height)
 				cy = 0;
-			if(cy < board->boardHeight) {
+			if(cy < board->height) {
 				/* Down left neighbor */
 				cx = x - 1;
 				if(board->torodial && x == 0)
-					cx = board->boardWidth - 1;
+					cx = board->width - 1;
 				if(board->torodial || x != 0)
 					aliveCount += board_IsOn(board, cx, cy);
 
 				/* Down right neighbor */
 				cx = x + 1;
-				if(board->torodial && cx >= board->boardWidth)
+				if(board->torodial && cx >= board->width)
 					cx = 0;
-				if(cx < board->boardWidth)
+				if(cx < board->width)
 					aliveCount += board_IsOn(board, cx, cy);
 			}
 
@@ -230,7 +230,7 @@ void initSDL() { /* {{{ */
 	if(videoInfo->blit_hw)
 		videoFlags |= SDL_HWACCEL;
 
-	screen = SDL_SetVideoMode(board->boardWidth, board->boardHeight, 32, videoFlags);
+	screen = SDL_SetVideoMode(board->width, board->height, 32, videoFlags);
 	if(screen == NULL) {
 		fprintf(stderr, "Unable to create plot screen: %s\n", SDL_GetError());
 		exit(1);
@@ -245,8 +245,8 @@ void drawGrid() { /* {{{ */
 			exit(1);
 		}
 	}
-	for(x = 0; x < board->boardWidth; ++x) {
-		for(y = 0; y < board->boardHeight; ++y) {
+	for(x = 0; x < board->width; ++x) {
+		for(y = 0; y < board->height; ++y) {
 			bufp = (Uint32 *)screen->pixels + y*screen->pitch/4 + x;
 			*bufp = (board_IsOn(board, x, y)) ? pOn : pOff;
 		}
@@ -254,6 +254,6 @@ void drawGrid() { /* {{{ */
 	if(SDL_MUSTLOCK(screen)) {
 		SDL_UnlockSurface(screen);
 	}
-	SDL_UpdateRect(screen, 0, 0, board->boardWidth, board->boardHeight);
+	SDL_UpdateRect(screen, 0, 0, board->width, board->height);
 } /* }}} */
 
