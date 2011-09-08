@@ -12,7 +12,7 @@ typedef struct {
 
 Board *board_readFile(FILE *f);
 
-int board_IsOn(Board *b, uint64_t n);
-int board_Set(Board *b, uint64_t n, char state);
+int board_IsOn(Board *b, uint32_t x, uint32_t y);
+int board_Set(Board *b, uint32_t x, uint32_t y, char state);
 
 #endif /* BOARD_H */

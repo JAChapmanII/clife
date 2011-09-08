@@ -12,13 +12,15 @@ int isDigit(char c) {
 		(c == '0'));
 }
 
-int board_IsOn(Board *b, uint64_t n) {
+int board_IsOn(Board *b, uint32_t x, uint32_t y) {
+	uint64_t n =y*b->boardWidth + x;
 	return (b->board[n >> 3] & (0x1 << (n % 8))) >> (n % 8);
 }
-int board_Set(Board *b, uint64_t n, char state) {
+int board_Set(Board *b, uint32_t x, uint32_t y, char state) {
+	uint64_t n =y*b->boardWidth + x;
 	if(state)
 		b->board[n >> 3] |= (0x1 << (n % 8));
-	else if(board_IsOn(b, n))
+	else if(board_IsOn(b, x, y))
 		b->board[n >> 3] -= (0x1 << (n % 8));
 	return state;
 }
@@ -221,7 +223,7 @@ int parseRuleHeader(FILE *f, Board *b) { /* {{{ */
 	return 0;
 } /* }}} */
 
-Board *readFile(FILE *f) { /* {{{ */
+Board *board_readFile(FILE *f) { /* {{{ */
 	uint32_t i;
 	Board *b;
 
@@ -248,7 +250,7 @@ Board *readFile(FILE *f) { /* {{{ */
 	}
 
 	b->boardArea = b->boardWidth * b->boardHeight;
-	b->memoryRequirement = b->boardArea >> 3;
+	b->memoryRequirement = (b->boardArea + 7) >> 3;
 	printf("Attempting to allocate %ld bytes for board\n", b->memoryRequirement);
 
 	b->board = malloc(b->memoryRequirement);
