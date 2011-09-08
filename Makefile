@@ -1,9 +1,9 @@
-LDFLAGS=-lm `sdl-config --libs` -lGL
+LDFLAGS=`sdl-config --libs`
 CFLAGS=-pedantic -ansi -Wall -Wextra `sdl-config --cflags`
 
-seratosthenes: seratosthenes.o
+clife: clife.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f *.o seratosthenes
+	rm -f *.o clife
 
