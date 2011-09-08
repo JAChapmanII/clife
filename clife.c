@@ -144,7 +144,7 @@ int main(int argc, char **argv) {
 int readFile(FILE *f) { /* {{{ */
 	size_t bRead;
 	uint32_t i, j, pCount = 0;
-	uint32_t xHead, yHead[2], rHead[8];
+	uint32_t xHead, yHead, rHead[8];
 	/*char yHead[6], rHead[15];*/
 	char glob[16];
 
@@ -198,6 +198,67 @@ int readFile(FILE *f) { /* {{{ */
 		exit(1);
 	}
 	printf("Board width: %d\n", boardWidth);
+
+	/* Verify yHead is present in header */
+	glob[0] = fgetc(f);
+	if(glob[0] != ' ') {
+		fprintf(stderr, "Malformed header after width!\n");
+		fprintf(stderr, "There needs to be a space, not a '%c'\n", glob[0]);
+		exit(1);
+	}
+	bRead = fread(&yHead, 1, 4, f);
+	if(bRead != 4) {
+		fprintf(stderr, "File is not long enough to have y-header!\n");
+		exit(1);
+	}
+	/*  79  20  3d  20
+	 * 'y' ' ' '=' ' ' 
+	 * it's backwards because... endianness? TODO */
+	if(yHead != 0x203d2079) {
+		fprintf(stderr, "File header is incorrect (wrong yHead)!\n");
+		fprintf(stderr, "Recieved: %x\n", yHead);
+		exit(1);
+	}
+
+	/* Read height */
+	for(i = 0; i < 16; ++i) {
+		glob[i] = fgetc(f);
+		if(feof(f)) {
+			fprintf(stderr, "Ran out of file while looking for width!\n");
+			exit(1);
+		}
+		if(!isDigit(glob[i])) {
+			break;
+		}
+	}
+	if(!i) {
+		fprintf(stderr, "Board height is not a number!\n");
+		exit(1);
+	}
+	if(i == 16) {
+		fprintf(stderr, "Board height seems to be too many digits long!\n");
+		exit(1);
+	}
+	if(glob[i] != ',') {
+		fprintf(stderr, "Board height is not ended properly!\n");
+		fprintf(stderr, "Height ended with :'%c'\n", glob[i]);
+		exit(1);
+	}
+
+	boardHeight = atoi(glob);
+	if(boardWidth <= 0) {
+		fprintf(stderr, "Board height doesn't parse or is 0!\n");
+		exit(1);
+	}
+	if(boardHeight >= MAX_BOARD_HEIGHT) {
+		fprintf(stderr, "Board height is too large!\n");
+		exit(1);
+	}
+	printf("Board height: %d\n", boardHeight);
+
+	boardArea = boardWidth * boardHeight;
+	memoryRequirement = boardArea >> 3;
+
 
 	board = malloc(memoryRequirement);
 	if(!board) {
