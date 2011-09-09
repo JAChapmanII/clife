@@ -5,6 +5,12 @@
 
 #include "board.h"
 
+#define DEFAULT_WIDTH  800
+#define DEFAULT_HEIGHT 600
+
+#define PAN_SPEED 25
+
+int32_t windowWidth, windowHeight, wStartX, wStartY, zoomLevel;
 Board *board, *new = NULL, *tmp;
 
 int stepLife();
@@ -18,6 +24,9 @@ int main(int argc, char **argv) {
 	int i, tAN;
 	FILE *in;
 
+	windowWidth  = DEFAULT_WIDTH;
+	windowHeight = DEFAULT_HEIGHT;
+
 	if(argc < 2) {
 		in = stdin;
 		printf("Looking for .rle on input.\n");
@@ -27,20 +36,37 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "Could not open \"%s\" for reading!\n", argv[1]);
 			return 1;
 		}
+		if(argc > 2) {
+			windowWidth = atoi(argv[2]);
+			if(windowWidth <= 0)
+				windowWidth = DEFAULT_WIDTH;
+			if(argc > 3) {
+				windowHeight = atoi(argv[3]);
+				if(windowHeight <= 0)
+					windowHeight = DEFAULT_HEIGHT;
+			}
+		}
 	}
 
 	board = board_readFile(in);
 	if(!board)
 		return 1;
 
+	if(argc > 4) {
+		board->torodial = 1;
+	}
+
 	printf("Initial population is %ld out of %ld area\n",
 			board->alive, board_getArea(board));
 
 	board->torodial = 1;
+
+	/*
 	if(argc > 2) {
 		printf("Board is not torodial\n");
 		board->torodial = 0;
 	}
+	*/
 
 	initSDL();
 	if(screen->format->BytesPerPixel != 4) {
@@ -68,6 +94,24 @@ int main(int argc, char **argv) {
 						case SDLK_RETURN: case SDLK_ESCAPE:
 							printf("We recieved key input saying to stop.\n");
 							i = -1;
+							break;
+						case SDLK_a:
+							zoomLevel++;
+							break;
+						case SDLK_o:
+							zoomLevel--;
+							break;
+						case SDLK_LEFT:
+							wStartX -= PAN_SPEED;
+							break;
+						case SDLK_RIGHT:
+							wStartX += PAN_SPEED;
+							break;
+						case SDLK_DOWN:
+							wStartY += PAN_SPEED;
+							break;
+						case SDLK_UP:
+							wStartY -= PAN_SPEED;
 							break;
 						default:
 							break;
@@ -234,7 +278,7 @@ void initSDL() { /* {{{ */
 	if(videoInfo->blit_hw)
 		videoFlags |= SDL_HWACCEL;
 
-	screen = SDL_SetVideoMode(board->width, board->height, 32, videoFlags);
+	screen = SDL_SetVideoMode(windowWidth, windowHeight, 32, videoFlags);
 	if(screen == NULL) {
 		fprintf(stderr, "Unable to create plot screen: %s\n", SDL_GetError());
 		exit(1);
@@ -243,21 +287,39 @@ void initSDL() { /* {{{ */
 void drawGrid() { /* {{{ */
 	uint32_t x, y, *bufp;
 
+	if(zoomLevel < 0)
+		zoomLevel = 0;
+
+	if(wStartX < 0)
+		wStartX = 0;
+	if(wStartX >= (int32_t)board->width - (windowWidth >> zoomLevel))
+		wStartX = (int32_t)board->width - (windowWidth >> zoomLevel) - 1;
+
+	if(wStartY < 0)
+		wStartY = 0;
+	if(wStartY >= (int32_t)board->height - (windowHeight >> zoomLevel))
+		wStartY = (int32_t)board->height - (windowHeight >> zoomLevel) - 1;
+
+	printf("[%d, %d] - %d\n", wStartX, wStartY, zoomLevel);
+
 	if(SDL_MUSTLOCK(screen)) {
 		if(SDL_LockSurface(screen) < 0) {
 			fprintf(stderr, "Required to lock screen, but can't\n");
 			exit(1);
 		}
 	}
-	for(x = 0; x < board->width; ++x) {
-		for(y = 0; y < board->height; ++y) {
+	for(x = 0; x < (uint32_t)windowWidth && x < board->width; ++x) {
+		for(y = 0; y < (uint32_t)windowHeight && y < board->height; ++y) {
 			bufp = (Uint32 *)screen->pixels + y*screen->pitch/4 + x;
-			*bufp = (board_IsOn(board, x, y)) ? pOn : pOff;
+			*bufp = (board_IsOn(board,
+				(x + (wStartX << zoomLevel)) >> zoomLevel, 
+				(y + (wStartY << zoomLevel)) >> zoomLevel)) ?
+					pOn : pOff;
 		}
 	}
 	if(SDL_MUSTLOCK(screen)) {
 		SDL_UnlockSurface(screen);
 	}
-	SDL_UpdateRect(screen, 0, 0, board->width, board->height);
+	SDL_UpdateRect(screen, 0, 0, windowWidth, windowHeight);
 } /* }}} */
 
