@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 
 	drawGrid();
 	SDL_SaveBMP(screen, "initial.bmp");
-	printf("Saving to initial.bmp");
+	printf("Saving to initial.bmp\n");
 	SDL_Delay(500);
 
 	for(i = 1; i > 0; ++i) {
