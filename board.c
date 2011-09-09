@@ -4,13 +4,14 @@
 
 #include "board.h"
 
+/* Returns 1 if c is a digit [0-9] {{{ */
 int isDigit(char c) {
 	return (
 		(c == '1') || (c == '2') || (c == '3') ||
 		(c == '4') || (c == '5') || (c == '6') ||
 		(c == '7') || (c == '8') || (c == '9') ||
 		(c == '0'));
-}
+} /* }}} */
 
 int board_IsOn(Board *b, uint32_t x, uint32_t y) {
 	uint64_t n =y*b->width + x;
@@ -224,7 +225,8 @@ int parseRuleHeader(FILE *f, Board *b) { /* {{{ */
 } /* }}} */
 
 Board *board_readFile(FILE *f) { /* {{{ */
-	uint32_t i;
+	uint32_t i, j, k, l;
+	char glob[16];
 	Board *b;
 
 	b = malloc(sizeof(Board));
@@ -233,6 +235,7 @@ Board *board_readFile(FILE *f) { /* {{{ */
 		return 0;
 	}
 
+	/* Parse width, height, and rHeader. Die if anything fails {{{ */
 	if(parseWidthHeader(f, b)) {
 		free(b);
 		return 0;
@@ -247,7 +250,7 @@ Board *board_readFile(FILE *f) { /* {{{ */
 	if(parseRuleHeader(f, b)) {
 		free(b);
 		return 0;
-	}
+	} /* }}} */
 
 	printf("Allocating %ld bytes for board\n", board_getMemoryRequirement(b));
 	b->board = malloc(board_getMemoryRequirement(b));
@@ -258,6 +261,57 @@ Board *board_readFile(FILE *f) { /* {{{ */
 	}
 
 	for(i = 0; i < b->height; ++i) {
+		glob[0] = j = 0;
+		while(glob[0] != '$') {
+			for(k = 0; k < 16; ++k) {
+				glob[k] = fgetc(f);
+				if(feof(f)) {
+					fprintf(stderr, "Ran out of file while reading board!\n");
+					free(b);
+					return 0;
+				}
+				if(!isDigit(glob[k]))
+					break;
+			}
+			if(k == 16) {
+				fprintf(stderr, "RLE seems to be too many digits long!\n");
+				fprintf(stderr, "glob: %.16s\n", glob);
+				free(b);
+				return 0;
+			}
+
+			if(k == 0) {
+				if(glob[0] != '$') {
+					printf("%c", glob[0]);
+					board_Set(b, j++, i, (glob[0] == 'o'));
+				}
+			} else {
+				if(glob[k] == 'o') {
+					glob[k] = '\0';
+					k = atoi(glob);
+					if(k <= 1) {
+						/* TODO: error out? */
+						fprintf(stderr, "Had a number without needing it?\n");
+					}
+					for(l = 0; l < k; ++l) {
+						printf("o");
+						board_Set(b, j++, i, 1);
+					}
+				} else {
+					glob[k] = '\0';
+					k = atoi(glob);
+					if(k <= 1) {
+						/* TODO: error out? */
+						fprintf(stderr, "Had a number without needing it?\n");
+					}
+					for(l = 0; l < k; ++l) {
+						printf("b");
+						board_Set(b, j++, i, 0);
+					}
+				}
+			}
+		}
+		printf(" j: %d\n", j);
 	}
 
 	return b;
