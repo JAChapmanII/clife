@@ -8,10 +8,11 @@
 #define DEFAULT_WIDTH  800
 #define DEFAULT_HEIGHT 600
 
-#define PAN_SPEED 25
+#define PAN_SPEED 2
 
 int32_t windowWidth, windowHeight, wStartX, wStartY, zoomLevel;
 Board *board, *new = NULL, *tmp;
+char keyboard[SDLK_LAST];
 
 int stepLife();
 
@@ -90,32 +91,18 @@ int main(int argc, char **argv) {
 		while(SDL_PollEvent(&event)) {
 			switch(event.type) {
 				case SDL_KEYDOWN:
+					keyboard[event.key.keysym.sym] = 1;
 					switch(event.key.keysym.sym) {
 						case SDLK_RETURN: case SDLK_ESCAPE:
 							printf("We recieved key input saying to stop.\n");
 							i = -1;
 							break;
-						case SDLK_a:
-							zoomLevel++;
-							break;
-						case SDLK_o:
-							zoomLevel--;
-							break;
-						case SDLK_LEFT:
-							wStartX -= PAN_SPEED;
-							break;
-						case SDLK_RIGHT:
-							wStartX += PAN_SPEED;
-							break;
-						case SDLK_DOWN:
-							wStartY += PAN_SPEED;
-							break;
-						case SDLK_UP:
-							wStartY -= PAN_SPEED;
-							break;
 						default:
 							break;
 					}
+					break;
+				case SDL_KEYUP:
+					keyboard[event.key.keysym.sym] = 0;
 					break;
 				default:
 					break;
@@ -124,6 +111,20 @@ int main(int argc, char **argv) {
 		/* If enter/escape was pressed, abort */
 		if(i <= 0)
 			break;
+
+		if(keyboard[SDLK_a])
+			zoomLevel++;
+		if(keyboard[SDLK_o])
+			zoomLevel--;
+		if(keyboard[SDLK_LEFT])
+			wStartX -= PAN_SPEED;
+		if(keyboard[SDLK_RIGHT])
+			wStartX += PAN_SPEED;
+		if(keyboard[SDLK_DOWN])
+			wStartY += PAN_SPEED;
+		if(keyboard[SDLK_UP])
+			wStartY -= PAN_SPEED;
+
 		drawGrid();
 		/*SDL_Delay(333);*/
 		tAN = stepLife();
@@ -283,6 +284,9 @@ void initSDL() { /* {{{ */
 		fprintf(stderr, "Unable to create plot screen: %s\n", SDL_GetError());
 		exit(1);
 	}
+
+	zoomLevel = 0;
+	wStartX = wStartY = 0;
 } /* }}} */
 void drawGrid() { /* {{{ */
 	uint32_t x, y, *bufp;
@@ -300,8 +304,6 @@ void drawGrid() { /* {{{ */
 	if(wStartY >= (int32_t)board->height - (windowHeight >> zoomLevel))
 		wStartY = (int32_t)board->height - (windowHeight >> zoomLevel) - 1;
 
-	printf("[%d, %d] - %d\n", wStartX, wStartY, zoomLevel);
-
 	if(SDL_MUSTLOCK(screen)) {
 		if(SDL_LockSurface(screen) < 0) {
 			fprintf(stderr, "Required to lock screen, but can't\n");
@@ -312,7 +314,7 @@ void drawGrid() { /* {{{ */
 		for(y = 0; y < (uint32_t)windowHeight && y < board->height; ++y) {
 			bufp = (Uint32 *)screen->pixels + y*screen->pitch/4 + x;
 			*bufp = (board_IsOn(board,
-				(x + (wStartX << zoomLevel)) >> zoomLevel, 
+				(x + (wStartX << zoomLevel)) >> zoomLevel,
 				(y + (wStartY << zoomLevel)) >> zoomLevel)) ?
 					pOn : pOff;
 		}
