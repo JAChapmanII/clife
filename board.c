@@ -282,7 +282,6 @@ Board *board_readFile(FILE *f) { /* {{{ */
 
 			if(k == 0) {
 				if(glob[0] != '$') {
-					printf("%c", glob[0]);
 					board_Set(b, j++, i, (glob[0] == 'o'));
 				}
 			} else {
@@ -294,7 +293,6 @@ Board *board_readFile(FILE *f) { /* {{{ */
 						fprintf(stderr, "Had a number without needing it?\n");
 					}
 					for(l = 0; l < k; ++l) {
-						printf("o");
 						board_Set(b, j++, i, 1);
 					}
 				} else {
@@ -305,13 +303,11 @@ Board *board_readFile(FILE *f) { /* {{{ */
 						fprintf(stderr, "Had a number without needing it?\n");
 					}
 					for(l = 0; l < k; ++l) {
-						printf("b");
 						board_Set(b, j++, i, 0);
 					}
 				}
 			}
 		}
-		printf(" j: %d\n", j);
 	}
 
 	return b;
