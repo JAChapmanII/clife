@@ -33,10 +33,14 @@ int main(int argc, char **argv) {
 	if(!board)
 		return 1;
 
-	printf("Initial population is %ld out of %ld area\n", board->aliveCount, board->area);
+	printf("Initial population is %ld out of %ld area\n",
+			board->alive, board_getArea(board));
 
-	if(argc > 1)
+	board->torodial = 1;
+	if(argc > 2) {
+		printf("Board is not torodial\n");
 		board->torodial = 0;
+	}
 
 	initSDL();
 	if(screen->format->BytesPerPixel != 4) {
@@ -50,7 +54,9 @@ int main(int argc, char **argv) {
 	printf("Constructed colors...\n");
 
 	drawGrid();
-	SDL_Delay(1000);
+	SDL_SaveBMP(screen, "initial.bmp");
+	printf("Saving to initial.bmp");
+	SDL_Delay(500);
 
 	for(i = 1; i > 0; ++i) {
 		/* See if enter or escape was pressed {{{ */
@@ -104,18 +110,16 @@ int stepLife() { /* {{{ */
 		}
 		new->width = board->width;
 		new->height = board->height;
-		new->area = board->area;
-		new->memoryRequirement = board->memoryRequirement;
-		new->aliveCount = board->aliveCount;
+		new->alive = board->alive;
 		new->torodial = board->torodial;
-		new->board = malloc(new->memoryRequirement);
+		new->board = malloc(board_getMemoryRequirement(board));
 		if(!new->board) {
 			fprintf(stderr, "Could not allocate enough memory for new->board!\n");
 			exit(1);
 		}
 	}
 
-	board->aliveCount = 0;
+	board->alive = 0;
 	for(x = 0; x < board->width; ++x) {
 		for(y = 0; y < board->height; ++y) {
 			aliveCount = 0;
@@ -195,13 +199,13 @@ int stepLife() { /* {{{ */
 			if(!board_IsOn(board, x, y) && (aliveCount == 3))
 				board_Set(new, x, y, 1);
 			if(board_IsOn(new, x, y))
-				board->aliveCount++;
+				board->alive++;
 		}
 	}
 	tmp = board;
 	board = new;
 	new = tmp;
-	return new->aliveCount;
+	return new->alive;
 } /* }}} */
 
 void initSDL() { /* {{{ */
