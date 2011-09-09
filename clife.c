@@ -112,18 +112,18 @@ int main(int argc, char **argv) {
 		if(i <= 0)
 			break;
 
+		if(keyboard[SDLK_LEFT])
+			wStartX -= (PAN_SPEED << (3 - zoomLevel));
+		if(keyboard[SDLK_RIGHT])
+			wStartX += (PAN_SPEED << (3 - zoomLevel));
+		if(keyboard[SDLK_DOWN])
+			wStartY += (PAN_SPEED << (3 - zoomLevel));
+		if(keyboard[SDLK_UP])
+			wStartY -= (PAN_SPEED << (3 - zoomLevel));
 		if(keyboard[SDLK_a])
 			zoomLevel++;
 		if(keyboard[SDLK_o])
 			zoomLevel--;
-		if(keyboard[SDLK_LEFT])
-			wStartX -= PAN_SPEED;
-		if(keyboard[SDLK_RIGHT])
-			wStartX += PAN_SPEED;
-		if(keyboard[SDLK_DOWN])
-			wStartY += PAN_SPEED;
-		if(keyboard[SDLK_UP])
-			wStartY -= PAN_SPEED;
 
 		drawGrid();
 		/*SDL_Delay(333);*/
@@ -293,16 +293,18 @@ void drawGrid() { /* {{{ */
 
 	if(zoomLevel < 0)
 		zoomLevel = 0;
+	if(zoomLevel >= 4)
+		zoomLevel = 3;
 
+	if(wStartX > (int32_t)board->width - (windowWidth >> zoomLevel))
+		wStartX = (int32_t)board->width - (windowWidth >> zoomLevel) - 1;
 	if(wStartX < 0)
 		wStartX = 0;
-	if(wStartX >= (int32_t)board->width - (windowWidth >> zoomLevel))
-		wStartX = (int32_t)board->width - (windowWidth >> zoomLevel) - 1;
 
+	if(wStartY > (int32_t)board->height - (windowHeight >> zoomLevel))
+		wStartY = (int32_t)board->height - (windowHeight >> zoomLevel) - 1;
 	if(wStartY < 0)
 		wStartY = 0;
-	if(wStartY >= (int32_t)board->height - (windowHeight >> zoomLevel))
-		wStartY = (int32_t)board->height - (windowHeight >> zoomLevel) - 1;
 
 	if(SDL_MUSTLOCK(screen)) {
 		if(SDL_LockSurface(screen) < 0) {
