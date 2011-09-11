@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <SDL/SDL.h>
+#include <pthread.h>
 
 #include "board.h"
 
@@ -10,11 +11,15 @@
 
 #define PAN_SPEED 2
 
+/* Note: this is hard coded, but has a name ;) */
+#define THREAD_COUNT 4
+
 int32_t windowWidth, windowHeight, wStartX, wStartY, zoomLevel;
 Board *board, *new = NULL, *tmp;
 char keyboard[SDLK_LAST];
 
 int stepLife();
+void *stepThread(void *args);
 
 SDL_Surface *screen;
 Uint32 pOn, pOff;
@@ -52,6 +57,9 @@ int main(int argc, char **argv) {
 	board = board_readFile(in);
 	if(!board)
 		return 1;
+
+	printf("Board middle (byte aligned): %d, %d\n",
+			(board->width >> 4) << 3, (board->height >> 4) << 3);
 
 	if(argc > 4) {
 		board->torodial = 1;
@@ -149,8 +157,9 @@ int main(int argc, char **argv) {
 }
 
 int stepLife() { /* {{{ */
-	uint32_t x, y, cx, cy;
-	char aliveCount;
+	pthread_t threads[THREAD_COUNT];
+	uint64_t targs[3 * THREAD_COUNT];
+	uint32_t midX, midY;
 
 	if(!new) {
 		new = malloc(sizeof(Board));
@@ -169,9 +178,84 @@ int stepLife() { /* {{{ */
 		}
 	}
 
-	board->alive = 0;
-	for(x = 0; x < board->width; ++x) {
-		for(y = 0; y < board->height; ++y) {
+	midX = (board->width >> 4) << 3;
+	midY = (board->height >> 4) << 3;
+
+	/* top left corner */
+	((uint32_t *)targs)[0] = 0;
+	((uint32_t *)targs)[1] = 0;
+	((uint32_t *)targs)[2] = midX;
+	((uint32_t *)targs)[3] = midY;
+
+	/* top right corner */
+	((uint32_t *)targs)[6] = midX;
+	((uint32_t *)targs)[7] = 0;
+	((uint32_t *)targs)[8] = board->width;
+	((uint32_t *)targs)[9] = midY;
+
+	/* bottom left corner */
+	((uint32_t *)targs)[12] = 0;
+	((uint32_t *)targs)[13] = midY;
+	((uint32_t *)targs)[14] = midX;
+	((uint32_t *)targs)[15] = board->height;
+
+	/* bottom right corner */
+	((uint32_t *)targs)[18] = midX;
+	((uint32_t *)targs)[19] = midY;
+	((uint32_t *)targs)[20] = board->width;
+	((uint32_t *)targs)[21] = board->height;
+
+	if(pthread_create(&threads[0], NULL, stepThread, (void *)(&targs[0]))) {
+		fprintf(stderr, "thread creation 0 failed\n");
+		exit(1);
+	}
+	if(pthread_create(&threads[1], NULL, stepThread, (void *)(&targs[3]))) {
+		fprintf(stderr, "thread creation 1 failed\n");
+		exit(1);
+	}
+	if(pthread_create(&threads[2], NULL, stepThread, (void *)(&targs[6]))) {
+		fprintf(stderr, "thread creation 2 failed\n");
+		exit(1);
+	}
+	if(pthread_create(&threads[3], NULL, stepThread, (void *)(&targs[9]))) {
+		fprintf(stderr, "thread creation 3 failed\n");
+		exit(1);
+	}
+
+	if(pthread_join(threads[0], NULL)) {
+		fprintf(stderr, "thread 0 join failed\n");
+		exit(1);
+	}
+	if(pthread_join(threads[1], NULL)) {
+		fprintf(stderr, "thread 1 join failed\n");
+		exit(1);
+	}
+	if(pthread_join(threads[2], NULL)) {
+		fprintf(stderr, "thread 2 join failed\n");
+		exit(1);
+	}
+	if(pthread_join(threads[3], NULL)) {
+		fprintf(stderr, "thread 3 join failed\n");
+		exit(1);
+	}
+
+	board->alive = targs[2] + targs[5] + targs[8] + targs[11];
+
+	tmp = board;
+	board = new;
+	new = tmp;
+	return new->alive;
+} /* }}} */
+void *stepThread(void *args) { /* {{{ */
+	uint32_t x, y, cx, cy, *ends;
+	uint64_t *alive;
+	char aliveCount;
+
+	ends = (uint32_t *)args;
+	alive = &((uint64_t *)args)[2];
+	alive = 0;
+	for(x = ends[0]; x < ends[2]; ++x) {
+		for(y = ends[1]; y < ends[3]; ++y) {
 			aliveCount = 0;
 
 			cx = x;
@@ -249,13 +333,10 @@ int stepLife() { /* {{{ */
 			if(!board_IsOn(board, x, y) && (aliveCount == 3))
 				board_Set(new, x, y, 1);
 			if(board_IsOn(new, x, y))
-				board->alive++;
+				alive++;
 		}
 	}
-	tmp = board;
-	board = new;
-	new = tmp;
-	return new->alive;
+	return NULL;
 } /* }}} */
 
 void initSDL() { /* {{{ */
