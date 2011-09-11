@@ -69,6 +69,11 @@ int main(int argc, char **argv) {
 	}
 	*/
 
+	if((uint32_t)windowWidth > board->width)
+		windowWidth = board->width;
+	if((uint32_t)windowHeight > board->height)
+		windowHeight = board->height;
+
 	initSDL();
 	if(screen->format->BytesPerPixel != 4) {
 		fprintf(stderr, "Screen not 32-bpp\n");
