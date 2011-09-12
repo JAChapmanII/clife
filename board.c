@@ -13,19 +13,6 @@ int isDigit(char c) {
 		(c == '0'));
 } /* }}} */
 
-int board_IsOn(Board *b, uint32_t x, uint32_t y) {
-	uint64_t n =y*b->width + x;
-	return (b->board[n >> 3] & (0x1 << (n % 8))) >> (n % 8);
-}
-int board_Set(Board *b, uint32_t x, uint32_t y, char state) {
-	uint64_t n =y*b->width + x;
-	if(state)
-		b->board[n >> 3] |= (0x1 << (n % 8));
-	else if(board_IsOn(b, x, y))
-		b->board[n >> 3] -= (0x1 << (n % 8));
-	return state;
-}
-
 int parseWidthHeader(FILE *f, Board *b) { /* {{{ */
 	uint32_t i, head;
 	char glob[16];
@@ -282,7 +269,8 @@ Board *board_readFile(FILE *f) { /* {{{ */
 
 			if(k == 0) {
 				if(glob[0] != '$') {
-					board_Set(b, j++, i, (glob[0] == 'o'));
+					board_Set(b, j, i, (glob[0] == 'o'));
+					j++;
 				}
 			} else {
 				if(glob[k] == 'o') {
@@ -293,7 +281,8 @@ Board *board_readFile(FILE *f) { /* {{{ */
 						fprintf(stderr, "Had a number without needing it?\n");
 					}
 					for(l = 0; l < k; ++l) {
-						board_Set(b, j++, i, 1);
+						board_Set(b, j, i, 1);
+						j++;
 					}
 				} else {
 					glob[k] = '\0';
@@ -303,7 +292,8 @@ Board *board_readFile(FILE *f) { /* {{{ */
 						fprintf(stderr, "Had a number without needing it?\n");
 					}
 					for(l = 0; l < k; ++l) {
-						board_Set(b, j++, i, 0);
+						board_Set(b, j, i, 0);
+						j++;
 					}
 				}
 			}
