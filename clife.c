@@ -264,14 +264,14 @@ void *stepThread(void *args) { /* {{{ */
 			if(board->torodial && y == 0)
 				cy = board->height - 1;
 			if(board->torodial || y != 0)
-				aliveCount += board_IsOn(board, cx, cy);
+				aliveCount += board_IsOn(board, cx, cy) ? 1 : 0;
 
 			/* Down neighbor */
 			cy = y + 1;
 			if(board->torodial && cy >= board->height)
 				cy = 0;
 			if(cy < board->height)
-				aliveCount += board_IsOn(board, cx, cy);
+				aliveCount += board_IsOn(board, cx, cy) ? 1 : 0;
 
 			cy = y;
 			/* Left neighbor */
@@ -279,14 +279,14 @@ void *stepThread(void *args) { /* {{{ */
 			if(board->torodial && x == 0)
 				cx = board->width - 1;
 			if(board->torodial || x != 0)
-				aliveCount += board_IsOn(board, cx, cy);
+				aliveCount += board_IsOn(board, cx, cy) ? 1 : 0;
 
 			/* Right neighbor */
 			cx = x + 1;
 			if(board->torodial && cx >= board->width)
 				cx = 0;
 			if(cx < board->width)
-				aliveCount += board_IsOn(board, cx, cy);
+				aliveCount += board_IsOn(board, cx, cy) ? 1 : 0;
 
 			cy = y - 1;
 			if(board->torodial && y == 0)
@@ -297,14 +297,14 @@ void *stepThread(void *args) { /* {{{ */
 				if(board->torodial && x == 0)
 					cx = board->width - 1;
 				if(board->torodial || x != 0)
-					aliveCount += board_IsOn(board, cx, cy);
+					aliveCount += board_IsOn(board, cx, cy) ? 1 : 0;
 
 				/* Up right neighbor */
 				cx = x + 1;
 				if(board->torodial && cx >= board->width)
 					cx = 0;
 				if(cx < board->width)
-					aliveCount += board_IsOn(board, cx, cy);
+					aliveCount += board_IsOn(board, cx, cy) ? 1 : 0;
 			}
 
 			cy = y + 1;
@@ -316,14 +316,14 @@ void *stepThread(void *args) { /* {{{ */
 				if(board->torodial && x == 0)
 					cx = board->width - 1;
 				if(board->torodial || x != 0)
-					aliveCount += board_IsOn(board, cx, cy);
+					aliveCount += board_IsOn(board, cx, cy) ? 1 : 0;
 
 				/* Down right neighbor */
 				cx = x + 1;
 				if(board->torodial && cx >= board->width)
 					cx = 0;
 				if(cx < board->width)
-					aliveCount += board_IsOn(board, cx, cy);
+					aliveCount += board_IsOn(board, cx, cy) ? 1 : 0;
 			}
 
 			board_Set(new, x, y, 0);
@@ -375,7 +375,7 @@ void initSDL() { /* {{{ */
 	wStartX = wStartY = 0;
 } /* }}} */
 void drawGrid() { /* {{{ */
-	uint32_t x, y, *bufp;
+	uint32_t x, y, *bufp, bx, by;
 
 	if(zoomLevel < 0)
 		zoomLevel = 0;
@@ -401,10 +401,9 @@ void drawGrid() { /* {{{ */
 	for(x = 0; x < (uint32_t)windowWidth && x < board->width; ++x) {
 		for(y = 0; y < (uint32_t)windowHeight && y < board->height; ++y) {
 			bufp = (Uint32 *)screen->pixels + y*screen->pitch/4 + x;
-			*bufp = (board_IsOn(board,
-				(x + (wStartX << zoomLevel)) >> zoomLevel,
-				(y + (wStartY << zoomLevel)) >> zoomLevel)) ?
-					pOn : pOff;
+			bx = (x + (wStartX << zoomLevel)) >> zoomLevel;
+			by = (y + (wStartY << zoomLevel)) >> zoomLevel;
+			*bufp = board_IsOn(board, bx, by) ? pOn : pOff;
 		}
 	}
 	if(SDL_MUSTLOCK(screen)) {
