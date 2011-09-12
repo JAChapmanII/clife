@@ -6,8 +6,9 @@
 #define MAX_BOARD_WIDTH  (1 << 16)
 #define MAX_BOARD_HEIGHT (1 << 16)
 
+#define board_N(b, x, y) ((y)*b->width + (x))
 #define board_IsOn(b, x, y) \
-	(b->board[((y)*b->width + (x)) >> 3] & (0x1 << (((y)*b->width + (x)) % 8))) >> (((y)*b->width + (x)) % 8)
+	((b->board[board_N(b, x, y) >> 3] & (0x1 << (board_N(b, x, y) % 8))) >> (board_N(b, x, y) % 8))
 
 #define board_Set(b, x, y, state) \
 	{ uint64_t n =y*b->width + x; if(state) b->board[n >> 3] |= (0x1 << (n % 8)); \
