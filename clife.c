@@ -27,7 +27,7 @@ void initSDL();
 void drawGrid();
 
 int main(int argc, char **argv) {
-	int i, tAN;
+	int i, tAN, simulate;
 	FILE *in;
 
 	windowWidth  = DEFAULT_WIDTH;
@@ -98,6 +98,7 @@ int main(int argc, char **argv) {
 	printf("Saving to initial.bmp\n");
 	SDL_Delay(500);
 
+	simulate = 1;
 	for(i = 1; i > 0; ++i) {
 		/* See if enter or escape was pressed {{{ */
 		SDL_Event event;
@@ -106,10 +107,15 @@ int main(int argc, char **argv) {
 				case SDL_KEYDOWN:
 					keyboard[event.key.keysym.sym] = 1;
 					switch(event.key.keysym.sym) {
-						case SDLK_RETURN: case SDLK_ESCAPE:
-							printf("We recieved key input saying to stop.\n");
+						case SDLK_RETURN:
+							simulate = !simulate;
+							break;
+						case SDLK_ESCAPE:
 							i = -1;
 							break;
+						case SDLK_TAB:
+							if(!simulate)
+								tAN = stepLife();
 						default:
 							break;
 					}
@@ -140,7 +146,8 @@ int main(int argc, char **argv) {
 
 		drawGrid();
 		/*SDL_Delay(333);*/
-		tAN = stepLife();
+		if(simulate)
+			tAN = stepLife();
 		if(tAN == 0) {
 			printf("All life is dead.\n");
 			i = -1;
@@ -148,7 +155,6 @@ int main(int argc, char **argv) {
 		if(i % 1000 == 0)
 			printf("generation: %d\ttAN: %d\n", i, tAN);
 	}
-	printf("Broken from game loop\n");
 
 	if(tAN != 0) {
 		SDL_SaveBMP(screen, "out.bmp");

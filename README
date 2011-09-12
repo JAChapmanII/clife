@@ -15,5 +15,9 @@ Running:
 Controls:
 	Once everything dies, the program exits
 
-	Enter, Escape: Exit prematurely (and save a screenshot in out.bmp)
+	Enter: pause or start simulation
+	Tab: step one generation into the future
+	a: zoom in
+	o: zoom out
+	Escape: Exit prematurely (and save a screenshot in out.bmp)
 
