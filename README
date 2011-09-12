@@ -1,5 +1,5 @@
 clife is an implementation of Conway's game of life in C.
-[the 'c' stands for Conway or 'C', take you pick ;)]
+[the 'c' stands for Conway or 'C', take your pick ;)]
 
 Compiling:
 	make
@@ -13,7 +13,7 @@ Running:
 	comments or other rulesets at this time.
 
 Controls:
-	Once everything dies, the program exits.
+	Once everything dies, the program exits. (broken)
 
 	Enter, Escape: Exit prematurely (and save a screenshot in out.bmp)
 

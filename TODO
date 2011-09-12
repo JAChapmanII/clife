@@ -13,5 +13,4 @@ Allow infinite grids using quadtrees
 			the generation, as long as they are not active they remain the same.
 		active -> things that are not oscilatting or still
 
-Implement threading in simple algorithm
-Implement hashli
+Implement hashlife
