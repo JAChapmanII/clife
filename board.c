@@ -6,11 +6,7 @@
 
 /* Returns 1 if c is a digit [0-9] {{{ */
 int isDigit(char c) {
-	return (
-		(c == '1') || (c == '2') || (c == '3') ||
-		(c == '4') || (c == '5') || (c == '6') ||
-		(c == '7') || (c == '8') || (c == '9') ||
-		(c == '0'));
+	return ((c >= '0') && (c <= '9'));
 } /* }}} */
 
 int parseWidthHeader(FILE *f, Board *b) { /* {{{ */
