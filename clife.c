@@ -145,6 +145,8 @@ int main(int argc, char **argv) {
 			printf("All life is dead.\n");
 			i = -1;
 		}
+		if(i % 1000 == 0)
+			printf("generation: %d\ttAN: %d\n", i, tAN);
 	}
 	printf("Broken from game loop\n");
 
@@ -253,7 +255,7 @@ void *stepThread(void *args) { /* {{{ */
 
 	ends = (uint32_t *)args;
 	alive = &((uint64_t *)args)[2];
-	alive = 0;
+	*alive = 0;
 	for(x = ends[0]; x < ends[2]; ++x) {
 		for(y = ends[1]; y < ends[3]; ++y) {
 			aliveCount = 0;
@@ -333,7 +335,7 @@ void *stepThread(void *args) { /* {{{ */
 			if(!board_IsOn(board, x, y) && (aliveCount == 3))
 				board_Set(new, x, y, 1);
 			if(board_IsOn(new, x, y))
-				alive++;
+				(*alive)++;
 		}
 	}
 	return NULL;
