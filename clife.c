@@ -25,6 +25,7 @@ SDL_Surface *screen;
 Uint32 pOn, pOff;
 void initSDL();
 void drawGrid();
+void saveBMP(int gen);
 
 int main(int argc, char **argv) {
 	int i, tAN, simulate;
@@ -89,7 +90,7 @@ int main(int argc, char **argv) {
 	}
 	printf("Initialized SDL...\n");
 
-	pOn  = SDL_MapRGB(screen->format,   0, 100, 255);
+	pOn  = SDL_MapRGB(screen->format,   0,   0,   0);
 	pOff = SDL_MapRGB(screen->format, 255, 255, 255);
 	printf("Constructed colors...\n");
 
@@ -98,8 +99,8 @@ int main(int argc, char **argv) {
 	printf("Saving to initial.bmp\n");
 	SDL_Delay(500);
 
-	simulate = 1;
-	for(i = 1; i > 0; ++i) {
+	simulate = 0;
+	for(i = 1; i > 0;) {
 		/* See if enter or escape was pressed {{{ */
 		SDL_Event event;
 		while(SDL_PollEvent(&event)) {
@@ -116,6 +117,8 @@ int main(int argc, char **argv) {
 						case SDLK_TAB:
 							if(!simulate)
 								tAN = stepLife();
+						case SDLK_s:
+							saveBMP(i);
 						default:
 							break;
 					}
@@ -130,6 +133,11 @@ int main(int argc, char **argv) {
 		/* If enter/escape was pressed, abort */
 		if(i <= 0)
 			break;
+
+		if(i == 20 || i == 20000)
+			saveBMP(i);
+		else if(i % 100 == 0)
+			saveBMP(i);
 
 		if(keyboard[SDLK_LEFT])
 			wStartX -= (PAN_SPEED << (3 - zoomLevel));
@@ -147,7 +155,7 @@ int main(int argc, char **argv) {
 		drawGrid();
 		/*SDL_Delay(333);*/
 		if(simulate)
-			tAN = stepLife();
+			tAN = stepLife(), ++i;
 		if(tAN == 0) {
 			printf("All life is dead.\n");
 			i = -1;
@@ -162,6 +170,14 @@ int main(int argc, char **argv) {
 	}
 
 	return 0;
+}
+
+void saveBMP(int gen) {
+	char nbuf[4096] = { 0 };
+	snprintf(nbuf, 4096, "primes-%d.bmp", gen);
+
+	SDL_SaveBMP(screen, nbuf);
+	printf("Saving to %s\n", nbuf);
 }
 
 int stepLife() { /* {{{ */
